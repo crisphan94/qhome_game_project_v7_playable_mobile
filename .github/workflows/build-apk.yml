@@ -17,14 +17,19 @@ jobs:
 
       - name: Setup export templates
         run: |
-          mkdir -p ~/.local/share/godot/export_templates/4.2.2.stable
-          if [ -d /root/.local/share/godot/export_templates/4.2.2.stable ]; then
-            cp -r /root/.local/share/godot/export_templates/4.2.2.stable/* ~/.local/share/godot/export_templates/4.2.2.stable/
-          fi
-          if [ -d /github/home/.local/share/godot/export_templates/4.2.2.stable ]; then
-            cp -r /github/home/.local/share/godot/export_templates/4.2.2.stable/* ~/.local/share/godot/export_templates/4.2.2.stable/
-          fi
-          ls -la ~/.local/share/godot/export_templates/4.2.2.stable
+          DEST="$HOME/.local/share/godot/export_templates/4.2.2.stable"
+          mkdir -p "$DEST"
+
+          for SRC in \
+            /root/.local/share/godot/export_templates/4.2.2.stable \
+            /github/home/.local/share/godot/export_templates/4.2.2.stable
+          do
+            if [ -d "$SRC" ] && [ "$(realpath "$SRC")" != "$(realpath "$DEST")" ]; then
+              cp -r "$SRC"/* "$DEST"/
+            fi
+          done
+
+          ls -la "$DEST"
 
       - name: Generate debug keystore
         run: |
