@@ -1,0 +1,8 @@
+{
+  "appId": "com.crisphan94.qhomemobile",
+  "appName": "QHome Mobile",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}
