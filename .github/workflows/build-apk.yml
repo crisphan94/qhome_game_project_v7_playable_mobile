@@ -74,6 +74,7 @@ jobs:
 
       - name: Generate debug keystore
         run: |
+          echo "HOME=$HOME"
           keytool -genkey -v \
             -keystore "$HOME/debug.keystore" \
             -alias androiddebugkey \
@@ -119,6 +120,7 @@ jobs:
           mkdir -p build
           echo "--- export_presets.cfg ---"
           cat export_presets.cfg
+          ls -la "$HOME/debug.keystore"
           godot --headless --path . --verbose --editor-settings ~/.config/godot/editor_settings-4.tres --export-debug "Android" build/qhome.apk
           test -f build/qhome.apk
           ls -la build
