@@ -23,12 +23,23 @@ jobs:
             exit 1
           fi
 
-          if [ -n "${ANDROID_SDK_ROOT:-}" ]; then
-            ANDROID_PATH="$ANDROID_SDK_ROOT"
-          elif [ -n "${ANDROID_HOME:-}" ]; then
-            ANDROID_PATH="$ANDROID_HOME"
-          else
-            ANDROID_PATH="$(dirname "$(dirname "$(dirname "$(dirname "$SDKMANAGER")")")")"
+          ANDROID_PATH=""
+          for CANDIDATE in \
+            "${ANDROID_SDK_ROOT:-}" \
+            "${ANDROID_HOME:-}" \
+            /usr/lib/android-sdk \
+            /opt/android-sdk \
+            /github/home/android-sdk
+          do
+            if [ -n "$CANDIDATE" ] && [ -d "$CANDIDATE" ]; then
+              ANDROID_PATH="$CANDIDATE"
+              break
+            fi
+          done
+
+          if [ -z "$ANDROID_PATH" ]; then
+            echo "Could not detect Android SDK root"
+            exit 1
           fi
 
           echo "ANDROID_PATH=$ANDROID_PATH" >> "$GITHUB_ENV"
@@ -51,16 +62,15 @@ jobs:
           DEST="$HOME/.local/share/godot/export_templates/4.2.2.stable"
           mkdir -p "$DEST"
 
-          for SRC in \
-            /root/.local/share/godot/export_templates/4.2.2.stable \
-            /github/home/.local/share/godot/export_templates/4.2.2.stable
-          do
-            if [ -d "$SRC" ] && [ "$(realpath "$SRC")" != "$(realpath "$DEST")" ]; then
-              cp -r "$SRC"/* "$DEST"/
-            fi
-          done
+          if [ ! -f "$DEST/android_debug.apk" ]; then
+            wget -q https://github.com/godotengine/godot/releases/download/4.2.2-stable/Godot_v4.2.2-stable_export_templates.tpz -O /tmp/godot_templates.tpz
+            unzip -q -o /tmp/godot_templates.tpz -d /tmp/godot_templates
+            cp -r /tmp/godot_templates/templates/* "$DEST"/
+          fi
 
-          ls -la "$DEST"
+          test -f "$DEST/android_debug.apk"
+          test -f "$DEST/android_release.apk"
+          ls -la "$DEST" | head -n 40
 
       - name: Generate debug keystore
         run: |
@@ -79,7 +89,7 @@ jobs:
           mkdir -p ~/.config/godot
           JAVA_BIN="$(command -v java)"
           JAVA_PATH="$(dirname "$(dirname "$(readlink -f "$JAVA_BIN")")")"
-          ANDROID_PATH="${ANDROID_PATH:-${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/lib/android-sdk}}}"
+          ANDROID_PATH="${ANDROID_PATH}"
 
           if [ ! -d "$ANDROID_PATH" ]; then
             echo "Android SDK path not found: $ANDROID_PATH"
@@ -107,7 +117,11 @@ jobs:
       - name: Build APK
         run: |
           mkdir -p build
-          godot --headless --editor-settings ~/.config/godot/editor_settings-4.tres --export-debug "Android" build/qhome.apk
+          sed -i "s|keystore/debug=\"\"|keystore/debug=\"$HOME/debug.keystore\"|" export_presets.cfg
+          sed -i "s|keystore/debug_user=\"\"|keystore/debug_user=\"androiddebugkey\"|" export_presets.cfg
+          sed -i "s|keystore/debug_password=\"\"|keystore/debug_password=\"android\"|" export_presets.cfg
+          godot --headless --verbose --editor-settings ~/.config/godot/editor_settings-4.tres --export-debug "Android" build/qhome.apk
+          ls -la build
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
