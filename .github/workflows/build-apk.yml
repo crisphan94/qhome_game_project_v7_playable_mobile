@@ -120,7 +120,9 @@ jobs:
           sed -i "s|keystore/debug=\"\"|keystore/debug=\"$HOME/debug.keystore\"|" export_presets.cfg
           sed -i "s|keystore/debug_user=\"\"|keystore/debug_user=\"androiddebugkey\"|" export_presets.cfg
           sed -i "s|keystore/debug_password=\"\"|keystore/debug_password=\"android\"|" export_presets.cfg
-          godot --headless --verbose --editor-settings ~/.config/godot/editor_settings-4.tres --export-debug "Android" build/qhome.apk
+          echo "--- export_presets.cfg ---"
+          cat export_presets.cfg
+          godot --headless --path . --verbose --editor-settings ~/.config/godot/editor_settings-4.tres --export-debug "Android" build/qhome.apk
           ls -la build
 
       - name: Upload APK
