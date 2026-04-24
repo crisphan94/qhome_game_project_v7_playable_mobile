@@ -18,12 +18,18 @@ jobs:
       - name: Setup export templates
         run: |
           mkdir -p ~/.local/share/godot/export_templates/4.2.2.stable
-          mv /root/.local/share/godot/export_templates/4.2.2.stable/* ~/.local/share/godot/export_templates/4.2.2.stable/
+          if [ -d /root/.local/share/godot/export_templates/4.2.2.stable ]; then
+            cp -r /root/.local/share/godot/export_templates/4.2.2.stable/* ~/.local/share/godot/export_templates/4.2.2.stable/
+          fi
+          if [ -d /github/home/.local/share/godot/export_templates/4.2.2.stable ]; then
+            cp -r /github/home/.local/share/godot/export_templates/4.2.2.stable/* ~/.local/share/godot/export_templates/4.2.2.stable/
+          fi
+          ls -la ~/.local/share/godot/export_templates/4.2.2.stable
 
       - name: Generate debug keystore
         run: |
           keytool -genkey -v \
-            -keystore /root/debug.keystore \
+            -keystore "$HOME/debug.keystore" \
             -alias androiddebugkey \
             -keyalg RSA \
             -keysize 2048 \
@@ -35,23 +41,34 @@ jobs:
       - name: Configure Godot editor settings
         run: |
           mkdir -p ~/.config/godot
-          JAVA_PATH=$(dirname $(dirname $(readlink -f $(which java))))
-          ANDROID_PATH="${ANDROID_HOME:-/usr/lib/android-sdk}"
-          cat > ~/.config/godot/editor_settings-4.tres << SETTINGS
+          JAVA_BIN="$(command -v java)"
+          JAVA_PATH="$(dirname "$(dirname "$(readlink -f "$JAVA_BIN")")")"
+          ANDROID_PATH="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/lib/android-sdk}}"
+
+          if [ ! -d "$ANDROID_PATH" ]; then
+            echo "Android SDK path not found: $ANDROID_PATH"
+            exit 1
+          fi
+
+          cat > ~/.config/godot/editor_settings-4.tres <<SETTINGS
           [gd_resource type="EditorSettings" format=3]
 
           [resource]
           export/android/android_sdk_path = "$ANDROID_PATH"
           export/android/java_sdk_path = "$JAVA_PATH"
-          export/android/debug_keystore = "/root/debug.keystore"
+          export/android/debug_keystore = "$HOME/debug.keystore"
           export/android/debug_keystore_user = "androiddebugkey"
           export/android/debug_keystore_pass = "android"
           SETTINGS
 
+          echo "Using Java at: $JAVA_PATH"
+          echo "Using Android SDK at: $ANDROID_PATH"
+          cat ~/.config/godot/editor_settings-4.tres
+
       - name: Build APK
         run: |
           mkdir -p build
-          godot --headless --export-debug "Android" build/qhome.apk
+          godot --headless --editor-settings ~/.config/godot/editor_settings-4.tres --export-debug "Android" build/qhome.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
